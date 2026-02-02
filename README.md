@@ -5,6 +5,34 @@ It offers public protocols, chess rules, and policies that every chess client sh
 
 # Protocols
 
-## Global Rule Protocols
+## Global State Protocols
+
+###Greeting
+Version - Entity Protocol Version
+EntityProfile - Entity Information; Name, ID, IP Address, Port Number
+
+##IntegrationTestResult
+
+
+###CreateGameSession
+###GameSessions
+###Connect
+###Disconnect
+###Reconnection
+###ConnectionLost
+###ConnectionTimedOut
+###PlayerProfile
+isHuman
+isAI
+
+###GameSessionProfile
+
+## Game State Protocols
+
+
 ## Gameplay Protocols
+Move
+Resign
+
 ## Broadcast Protocols
+GameState
