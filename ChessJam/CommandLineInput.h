@@ -20,6 +20,8 @@ public:
     bool isValid() const;
     void parse(int argc, const char* argv[]);
     void print() const;
+    ExecutionMode getMode() const;
+    const std::string& getMonitorAddress() const;
 
 private:
     void validate();

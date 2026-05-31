@@ -59,6 +59,10 @@ void CommandLineInput::parse(int argc, const char* argv[])
     }
 }
 
+ExecutionMode CommandLineInput::getMode() const { return executionMode; }
+
+const std::string& CommandLineInput::getMonitorAddress() const { return monitorAddress; }
+
 void CommandLineInput::print() const
 {
     using namespace std;

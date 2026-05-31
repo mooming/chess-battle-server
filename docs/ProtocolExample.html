@@ -1,0 +1,296 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Chess Battle Server Protocol & Game Example</title>
+<style>
+  body {font-family: Arial, sans-serif; margin: 20px;}
+  h1, h2 {color: #2c3e50;}
+  .board {border: 1px solid #333; margin-bottom: 20px;}
+  .msg-flow {margin: 20px 0;}
+  .msg {font-family: monospace; background:#f0f0f0; padding:2px 4px;}
+</style>
+</head>
+<body>
+<h1>Chess Battle Server – Protocol Overview</h1>
+<p>This document shows the binary protocol used by the server and a complete short game (Scholar’s Mate) illustrated with SVG board diagrams.</p>
+
+<h2>1. Protocol Message Examples</h2>
+<p>All messages start with a 16‑bit <strong>Protocol ID (PID)</strong> followed by a length field (when the payload is variable) and then the payload bytes. Below is a visual flow of a client connecting, performing the handshake, and then sending moves.</p>
+<div class="msg-flow">
+<svg width="500" height="120" xmlns="http://www.w3.org/2000/svg">
+  <!-- client box -->
+  <rect x="20" y="20" width="140" height="80" fill="#e8f4ff" stroke="#333"/>
+  <text x="90" y="45" font-family="Arial" font-size="14" text-anchor="middle">Client</text>
+  <!-- server box -->
+  <rect x="340" y="20" width="140" height="80" fill="#ffe8e8" stroke="#333"/>
+  <text x="410" y="45" font-family="Arial" font-size="14" text-anchor="middle">Server</text>
+  <!-- arrows -->
+  <line x1="160" y1="60" x2="340" y2="60" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <line x1="340" y1="80" x2="160" y2="80" stroke="#000" stroke-width="2" marker-end="url(#arrow)"/>
+  <!-- arrowhead definition -->
+  <defs>
+    <marker id="arrow" markerWidth="10" markerHeight="10" refX="0" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#000" />
+    </marker>
+  </defs>
+  <!-- labels -->
+  <text x="250" y="55" class="msg">0x0001 Greeting (client→server)</text>
+  <text x="250" y="95" class="msg">0x0200 Move (e2→e4)</text>
+</svg>
+<pre>
+Handshake (Human readable):
+Client → Server Greeting:
+  PID: 0x0001 (Greeting)
+  Version: 0x0001
+  Name: "ChessClient"
+
+Server → Client Greeting:
+  PID: 0x0001 (Greeting)
+  Version: 0x0001
+  Name: "ChessServer"
+
+Server → Client ConnectionSucceeded:
+  PID: 0x0002 (ConnectionSucceeded)
+  Message: "Welcome"
+
+Client → Server ConnectionSucceeded:
+  PID: 0x0002 (ConnectionSucceeded)
+  Message: "Welcome"
+</pre>
+</div>
+<p>Key PIDs used in this example:</p>
+<ul>
+<li><code>0x0001</code> – Greeting (version, name)</li>
+<li><code>0x0002</code> – ConnectionSucceeded</li>
+<li><code>0x0003</code> – ConnectionFailed</li>
+<li><code>0x0200</code> – Move (pawn/figure movement)</li>
+<li><code>0x0300</code> – VerifyGameState</li>
+<li><code>0x0401</code> – GameState (FEN string)</li>
+</ul>
+
+<h2>2. Full Game Example – Scholar’s Mate</h2>
+<p>The following PGN shows a classic four‑move checkmate. Each move is represented as a <code>Move</code> protocol message (PID <code>0x0200</code>) with the 4‑character square codes (e.g., <code>e2e4</code>).</p>
+<pre>
+1. e2e4   // White pawn from e2 to e4
+1... e7e5 // Black pawn from e7 to e5
+2. d1h5   // White queen from d1 to h5 (threatening f7)
+2... b8c6 // Black knight from b8 to c6 (defensive move)
+3. f1c4   // White bishop from f1 to c4 (targets f7)
+3... g8f6 // Black knight from g8 to f6 (blocks queen)
+4. h5f7#  // White queen captures on f7 delivering checkmate
+</pre>
+
+<h3>Board Diagrams</h3>
+<p>Each diagram shows the board after the corresponding move. White pieces are shown with the standard white Unicode symbols, black pieces with the black symbols.</p>
+
+<!-- Helper CSS for board squares -->
+<style>
+  .chess-board {border-collapse: collapse;}
+  .chess-board td {width:30px; height:30px; text-align:center; vertical-align:middle; font-size:24px;}
+  .light {background:#f0d9b5;}
+  .dark {background:#b58863;}
+</style>
+
+<table class="chess-board">
+<tr><th colspan="8">Initial Position</th></tr>
+<tr>
+<td class="dark">♜</td><td class="light">♞</td><td class="dark">♝</td><td class="light">♛</td><td class="dark">♚</td><td class="light">♝</td><td class="dark">♞</td><td class="light">♜</td>
+</tr>
+<tr>
+<td class="light">♟</td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td>
+</tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr>
+<td class="dark">♙</td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td>
+</tr>
+<tr>
+<td class="light">♖</td><td class="dark">♘</td><td class="light">♗</td><td class="dark">♕</td><td class="light">♔</td><td class="dark">♗</td><td class="light">♘</td><td class="dark">♖</td>
+</tr>
+</table>
+
+<p><strong>After 1. e2e4</strong></p>
+<table class="chess-board">
+<tr><th colspan="8">White pawn on e4</th></tr>
+<tr>
+<td class="dark">♜</td><td class="light">♞</td><td class="dark">♝</td><td class="light">♛</td><td class="dark">♚</td><td class="light">♝</td><td class="dark">♞</td><td class="light">♜</td>
+</tr>
+<tr>
+<td class="light">♟</td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td><td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td>
+</tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr>
+<td class="dark">♙</td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td><td class="dark"></td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td>
+</tr>
+<tr>
+<td class="light">♖</td><td class="dark">♘</td><td class="light">♗</td><td class="dark">♕</td><td class="light">♔</td><td class="dark">♗</td><td class="light">♘</td><td class="dark">♖</td>
+</tr>
+</table>
+<pre>
+Move packet (hex):
+02 00 65 32 65 34  // e2e4
+</pre>
+
+<p><strong>After 1... e7e5</strong></p>
+<table class="chess-board">
+<tr><th colspan="8">Black pawn on e5</th></tr>
+<tr>
+<td class="dark">♜</td><td class="light">♞</td><td class="dark">♝</td><td class="light">♛</td><td class="dark">♚</td><td class="light">♝</td><td class="dark">♞</td><td class="light">♜</td>
+</tr>
+<tr>
+<td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td><td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td>
+</tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr>
+<td class="dark">♙</td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td><td class="dark"></td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td>
+</tr>
+<tr>
+<td class="light">♖</td><td class="dark">♘</td><td class="light">♗</td><td class="dark">♕</td><td class="light">♔</td><td class="dark">♗</td><td class="light">♘</td><td class="dark">♖</td>
+</tr>
+</table>
+
+<p><strong>After 2. d1h5</strong> (White queen to h5)</p>
+<table class="chess-board">
+<tr><th colspan="8">White queen on h5</th></tr>
+<tr>
+<td class="dark">♜</td><td class="light">♞</td><td class="dark">♝</td><td class="light">♛</td><td class="dark">♚</td><td class="light">♝</td><td class="dark">♞</td><td class="light">♜</td>
+</tr>
+<tr>
+<td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td><td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark"></td>
+</tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr>
+<td class="dark">♙</td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td><td class="dark"></td><td class="light">♙</td><td class="dark">♙</td><td class="light"></td>
+</tr>
+<tr>
+<td class="light">♖</td><td class="dark">♘</td><td class="light">♗</td><td class="dark"></td><td class="light">♔</td><td class="dark">♗</td><td class="light">♘</td><td class="dark">♖</td>
+</tr>
+<tr>
+<td colspan="8" class="light" style="text-align:center;">♕ on h5</td>
+</tr>
+</table>
+<pre>
+Move packet (hex):
+02 00 64 31 68 35  // d1h5
+</pre>
+
+<p><strong>After 2... b8c6</strong> (Black knight to c6)</p>
+<table class="chess-board">
+<tr><th colspan="8">Black knight on c6</th></tr>
+<tr>
+<td class="dark">♜</td><td class="light"></td><td class="dark">♝</td><td class="light">♛</td><td class="dark">♚</td><td class="light">♝</td><td class="dark">♞</td><td class="light">♜</td>
+</tr>
+<tr>
+<td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td><td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark"></td>
+</tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr>
+<td class="dark">♙</td><td class="light">♙</td><td class="dark">♙</td><td class="light">♙</td><td class="dark"></td><td class="light">♙</td><td class="dark">♙</td><td class="light"></td>
+</tr>
+<tr>
+<td class="light">♖</td><td class="dark">♘</td><td class="light"></td><td class="dark"></td><td class="light">♔</td><td class="dark">♗</td><td class="light">♘</td><td class="dark">♖</td>
+</tr>
+</table>
+<pre>
+Move packet (hex):
+02 00 62 38 63 34  // b8c6
+</pre>
+
+<p><strong>After 3. f1c4</strong> (White bishop to c4)</p>
+<table class="chess-board">
+<tr><th colspan="8">White bishop on c4</th></tr>
+<tr>
+<td class="dark">♜</td><td class="light"></td><td class="dark">♝</td><td class="light">♛</td><td class="dark">♚</td><td class="light">♝</td><td class="dark">♞</td><td class="light">♜</td>
+</tr>
+<tr>
+<td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td><td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark"></td>
+</tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr>
+<td class="dark">♙</td><td class="light">♙</td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light">♙</td><td class="dark">♙</td><td class="light"></td>
+</tr>
+<tr>
+<td class="light">♖</td><td class="dark">♘</td><td class="light"></td><td class="dark"></td><td class="light">♔</td><td class="dark"></td><td class="light">♘</td><td class="dark">♖</td>
+</tr>
+<tr>
+<td colspan="8" class="light" style="text-align:center;">♝ on c4</td>
+</tr>
+</table>
+
+<p><strong>After 3... g8f6</strong> (Black knight to f6)</p>
+<table class="chess-board">
+<tr><th colspan="8">Black knight on f6</th></tr>
+<tr>
+<td class="dark">♜</td><td class="light"></td><td class="dark">♝</td><td class="light">♛</td><td class="dark">♚</td><td class="light">♝</td><td class="dark"></td><td class="light">♜</td>
+</tr>
+<tr>
+<td class="light"></td><td class="dark">♟</td><td class="light">♟</td><td class="dark">♟</td><td class="light"></td><td class="dark"></td><td class="light">♟</td><td class="dark"></td>
+</tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr>
+<td class="dark">♙</td><td class="light">♙</td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light">♙</td><td class="dark">♙</td><td class="light"></td>
+</tr>
+<tr>
+<td class="light">♖</td><td class="dark">♘</td><td class="light"></td><td class="dark"></td><td class="light">♔</td><td class="dark"></td><td class="light">♘</td><td class="dark">♖</td>
+</tr>
+</table>
+
+<p><strong>After 4. h5f7# (Checkmate)</strong></p>
+<table class="chess-board">
+<tr><th colspan="8">Checkmate – White queen on f7</th></tr>
+<tr>
+<td class="dark">♜</td><td class="light"></td><td class="dark">♝</td><td class="light">♛</td><td class="dark">♚</td><td class="light">♝</td><td class="dark"></td><td class="light">♜</td>
+</tr>
+<tr>
+<td class="light"></td><td class="dark"></td><td class="light">♟</td><td class="dark">♟</td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td>
+</tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td></tr>
+<tr><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td></tr>
+<tr>
+<td class="dark">♙</td><td class="light">♙</td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td><td class="dark"></td><td class="light"></td>
+</tr>
+<tr>
+<td class="light">♖</td><td class="dark">♘</td><td class="light"></td><td class="dark"></td><td class="light">♔</td><td class="dark"></td><td class="light"></td><td class="dark">♖</td>
+</tr>
+<tr>
+<td colspan="8" class="light" style="text-align:center;">♕ on f7 delivering checkmate</td>
+</tr>
+</table>
+
+<h2>3. Protocol Message Payload for the Game</h2>
+<p>Each move is sent as a <code>Move</code> message (PID <code>0x0200</code>) with a 4‑character square code (origin + destination). Example binary payloads (hex):</p>
+<ul>
+<li>1.e2e4 → <code>02 00 65 32 65 34</code> (PID 0x0200, ASCII "e2e4")</li>
+<li>1...e7e5 → <code>02 00 65 37 65 35</code></li>
+<li>2.Qh5 → <code>02 00 68 35 68 35</code> (queen moves from d1 to h5, encoded as "h5h5" for illustration)</li>
+<li>… and so on, ending with <code>02 00 66 37 66 37</code> for the final queen capture on f7.</li>
+</ul>
+<p>After the final move the server replies with a <code>GameState</code> (PID <code>0x0401</code>) containing the final FEN string, confirming checkmate.</p>
+
+<hr>
+<p>All protocol definitions and the example game are intended for developers integrating a chess AI or UI with the Chess Battle Server.</p>
+</body>
+</html>

@@ -5,6 +5,7 @@
 #include "CommandLineInput.h"
 #include "ExecutionMode.h"
 #include "StringHelper.h"
+#include "Server.h"
 
 
 namespace
@@ -45,6 +46,27 @@ int main(int argc, const char* argv[])
         cout << "> " << executed << " Server <Monitor-Address>" << endl;
         cout << "> " << executed << " Client <Monitor-Address>" << endl;
 
+    }
+    else {
+        // Valid command, act based on mode
+        switch (commandInput.getMode()) {
+        case ExecutionMode::Monitor:
+            // No server functionality for Monitor in this skeleton
+            break;
+        case ExecutionMode::Match:
+        case ExecutionMode::Judge:
+        case ExecutionMode::GameClient:
+            // Placeholder for other roles
+            break;
+        case ExecutionMode::GameServer:
+            {
+                Server server;
+                server.start(commandInput.getMonitorAddress());
+            }
+            break;
+        default:
+            break;
+        }
     }
 
     commandInput.print();
