@@ -1,20 +1,33 @@
 #pragma once
 
+#include "Session/SessionManager.h"
+
 #include <string>
 
-class Server {
+class Server
+{
 public:
     Server();
     ~Server();
-    // Starts server at given address (host) and optional port (default 12345)
+
+    // Start the server on the given address (host:port). Default port 12345.
     void start(const std::string& address);
+
 private:
-    int listen_fd;
-    void handleClient(int client_fd);
-    void sendGreeting(int fd);
-    void sendConnectionSucceeded(int fd);
+    int listenFd_ = -1;
+    session::SessionManager sessionMgr_;
+    bool running_ = false;
+
+    void handleClient(int clientFd);
+    void sendGreeting(int fd, uint16_t version, const std::string& name, const std::string& id);
+    void sendConnectionSucceeded(int fd, const std::string& message);
     void sendConnectionFailed(int fd, const std::string& reason);
-    uint16_t readUint16(int fd);
-    void writeUint16(int fd, uint16_t value);
-    void writeString(int fd, const std::string& str);
+    bool processSessionRequest(int fd, session::ClientContext& client);
+    bool processMove(int fd, session::ClientContext& client, const std::string& from, const std::string& to);
+    void processResign(int fd, session::ClientContext& client);
+    bool processVerifyState(int fd, session::ClientContext& client);
+    bool processRequestGameState(int fd, session::ClientContext& client);
+
+    // Helper: close the client socket.
+    void closeClient(int fd);
 };
