@@ -19,11 +19,18 @@ add_executable(Server
 target_include_directories(Server PRIVATE ChessJam)
 target_link_libraries(Server PRIVATE pthread)
 
-# ── Unit tests ─────────────────────────────────────────────────────────
-enable_testing()
+# ── Test client executable ─────────────────────────────────────────────
+add_executable(Client
+    ChessJam/Client/main.cpp
+    ChessJam/Client/ClientStub.cpp
+)
+
+target_include_directories(Client PRIVATE ChessJam)
+target_link_libraries(Client PRIVATE pthread)
 
 add_executable(Tests
     ChessJam/Tests/TestMain.cpp
+    ChessJam/Client/ClientStub.cpp
     ChessJam/Engine/FenParser.cpp
     ChessJam/Engine/Rules.cpp
 )
@@ -32,3 +39,4 @@ target_include_directories(Tests PRIVATE ChessJam)
 target_link_libraries(Tests PRIVATE pthread)
 
 add_test(NAME AllTests COMMAND Tests)
+enable_testing()

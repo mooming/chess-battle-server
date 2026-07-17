@@ -5,8 +5,17 @@
 #include "Engine/Game.h"
 #include "Protocol/Protocol.h"
 #include "Protocol/WireFormat.h"
+#include "Network/BinaryIO.h"
+#include "Client/ClientStub.h"
 
+#include <arpa/inet.h>
+#include <chrono>
+#include <cstring>
 #include <iostream>
+#include <netdb.h>
+#include <string>
+#include <thread>
+#include <unistd.h>
 
 // ── Board Tests ────────────────────────────────────────────────────────
 
@@ -265,6 +274,153 @@ TEST(Protocol_NoOverlappingPIDs)
             ASSERT_NE(pids[i], pids[j]);
         }
     }
+    return true;
+}
+
+// ── Integration Tests ──────────────────────────────────────────────────
+
+static const int kTestPort = 19877;
+
+class TestServer
+{
+public:
+    void start()
+    {
+        struct addrinfo hints{}, *res;
+        std::memset(&hints, 0, sizeof(hints));
+        hints.ai_family = AF_INET;
+        hints.ai_socktype = SOCK_STREAM;
+        hints.ai_flags = AI_PASSIVE;
+        std::string portStr = std::to_string(kTestPort);
+        int err = getaddrinfo("127.0.0.1", portStr.c_str(), &hints, &res);
+        if (err != 0) return;
+        listenFd_ = ::socket(res->ai_family, res->ai_socktype, res->ai_protocol);
+        if (listenFd_ == -1) { freeaddrinfo(res); return; }
+        int opt = 1;
+        setsockopt(listenFd_, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt));
+        ::bind(listenFd_, res->ai_addr, res->ai_addrlen);
+        freeaddrinfo(res);
+        ::listen(listenFd_, 5);
+        running_ = true;
+        std::thread([this]() { acceptLoop(); }).detach();
+    }
+
+    void stop()
+    {
+        running_ = false;
+        if (listenFd_ >= 0) ::close(listenFd_);
+    }
+
+private:
+    void acceptLoop()
+    {
+        while (running_)
+        {
+            struct sockaddr_in addr{};
+            socklen_t len = sizeof(addr);
+            int fd = ::accept(listenFd_, (struct sockaddr*)&addr, &len);
+            if (fd < 0) continue;
+            handleClient(fd);
+            ::close(fd);
+        }
+    }
+
+    void handleClient(int fd)
+    {
+        using namespace network;
+        uint16_t pid = 0;
+        if (!ReadPid(fd, pid) || pid != protocol::kPidGreeting) return;
+        uint16_t version = 0;
+        std::string name, id;
+        if (!ReadUint16(fd, version)) return;
+        if (!ReadString(fd, name, 63)) return;
+        if (!ReadString(fd, id, 127)) return;
+        WritePid(fd, protocol::kPidGreeting);
+        WriteUint16(fd, 1);
+        WriteString(fd, "TestServer");
+        WriteString(fd, "server_1");
+        WritePid(fd, protocol::kPidConnectionSucceeded);
+        WriteString(fd, "Welcome");
+        if (!ReadPid(fd, pid)) return;
+        if (pid == protocol::kPidMove)
+        {
+            char from[4], to[4];
+            ReadFixedArray(fd, from, 4);
+            ReadFixedArray(fd, to, 4);
+            std::string fen = "rnbqkbnr/pppppppp/8/8/4P3/8/PPPP1PPP/RNBQKBNR b KQkq e3 0 1";
+            WritePid(fd, protocol::kPidGameState);
+            WriteUint16(fd, static_cast<uint16_t>(fen.size()));
+            WriteBytes(fd, fen.data(), fen.size());
+        }
+    }
+
+    int listenFd_ = -1;
+    bool running_ = false;
+};
+
+TEST(Integration_Handshake)
+{
+    TestServer server;
+    server.start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ClientStub client;
+    client.connect("127.0.0.1", kTestPort);
+    ASSERT_TRUE(client.getFd() >= 0);
+    client.sendGreeting("TestClient");
+    std::string serverName, serverId;
+    ASSERT_TRUE(client.receiveGreeting(serverName, serverId));
+    ASSERT_TRUE(serverName == "TestServer");
+    ASSERT_TRUE(serverId == "server_1");
+    std::string msg;
+    ASSERT_TRUE(client.receiveConnectionSucceeded(msg));
+    ASSERT_TRUE(msg == "Welcome");
+    client.close();
+    server.stop();
+    return true;
+}
+
+TEST(Integration_MoveAndGameState)
+{
+    TestServer server;
+    server.start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ClientStub client;
+    client.connect("127.0.0.1", kTestPort);
+    ASSERT_TRUE(client.getFd() >= 0);
+    client.sendGreeting("TestClient");
+    std::string serverName, serverId;
+    ASSERT_TRUE(client.receiveGreeting(serverName, serverId));
+    std::string msg;
+    ASSERT_TRUE(client.receiveConnectionSucceeded(msg));
+    client.sendMove("WPe2", "WPe4");
+    std::string fen;
+    ASSERT_TRUE(client.receiveGameState(fen));
+    ASSERT_TRUE(fen.find("4P3") != std::string::npos);
+    client.close();
+    server.stop();
+    return true;
+}
+
+TEST(Integration_MultipleClients)
+{
+    TestServer server;
+    server.start();
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
+    ClientStub client1, client2;
+    client1.connect("127.0.0.1", kTestPort);
+    client2.connect("127.0.0.1", kTestPort);
+    ASSERT_TRUE(client1.getFd() >= 0);
+    ASSERT_TRUE(client2.getFd() >= 0);
+    client1.sendGreeting("Client1");
+    client2.sendGreeting("Client2");
+    std::string name, id, msg;
+    ASSERT_TRUE(client1.receiveGreeting(name, id));
+    ASSERT_TRUE(client2.receiveGreeting(name, id));
+    ASSERT_TRUE(client1.receiveConnectionSucceeded(msg));
+    ASSERT_TRUE(client2.receiveConnectionSucceeded(msg));
+    client1.close();
+    client2.close();
+    server.stop();
     return true;
 }
 
